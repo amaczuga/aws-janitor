@@ -39,7 +39,8 @@ def main():
         for vpc in aws.resource('ec2').vpcs.all():
             if not valid_tags(vpc.tags, intel_tags):
                 instance_count = sum(1 for e in vpc.instances.all())
-                vpc_desc = "%s::%s::%d " % (aws_region, vpc.vpc_id, instance_count)
+                vpc_name = (tag for tag in vpc.tags if tag["Key"] == "Name").next()["Value"]
+                vpc_desc = "%s::%s::%s::%d " % (aws_region, vpc.vpc_id, vpc_name, instance_count)
                 print vpc_desc + format_tags(vpc.tags, intel_tags)
 
 main()
