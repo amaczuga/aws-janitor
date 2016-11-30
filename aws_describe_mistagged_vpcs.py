@@ -12,7 +12,9 @@ def valid_tags(tags, pattern_tags):
     if tags:
         for pattern_key in pattern_tags:
             if any(pattern_key in tag["Key"] for tag in tags):
-                tag_value = (tag for tag in tags if tag["Key"] == pattern_key).next()["Value"]
+                tag_value = (
+                    tag for tag in tags if tag["Key"] == pattern_key
+                    ).next()["Value"]
                 if not re.match(pattern_tags[pattern_key], tag_value):
                     valid = valid and False
             else:
@@ -25,7 +27,9 @@ def format_tags(tags, subset_tags):
     if tags:
         for subset_key in subset_tags:
             if any(subset_key in tag["Key"] for tag in tags):
-                tag_value = (tag for tag in tags if tag["Key"] == subset_key).next()["Value"]
+                tag_value = (
+                    tag for tag in tags if tag["Key"] == subset_key
+                    ).next()["Value"]
                 tagstring += "\t%s:%s" % (subset_key, tag_value)
     return tagstring
 
@@ -39,8 +43,13 @@ def main():
         for vpc in aws.resource('ec2').vpcs.all():
             if not valid_tags(vpc.tags, intel_tags):
                 instance_count = sum(1 for e in vpc.instances.all())
-                vpc_name = (tag if tag["Key"] == "Name" else {} for tag in vpc.tags).next().get("Value")
-                vpc_desc = "%s::%s::%s::%d " % (aws_region, vpc.vpc_id, vpc_name, instance_count)
+                vpc_name = (
+                    tag if tag["Key"] == "Name" else {} for tag in vpc.tags
+                    ).next().get("Value")
+                vpc_desc = "%s::%s::%s::%d " % (aws_region,
+                                                vpc.vpc_id,
+                                                vpc_name,
+                                                instance_count)
                 print vpc_desc + format_tags(vpc.tags, intel_tags)
 
 main()

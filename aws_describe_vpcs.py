@@ -8,21 +8,21 @@ import requests
 import pytz
 from datetime import datetime
 
-PRICING_URL='https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/current/index.json'
-REGIONS={
-          'US East (N. Virginia)': 'us-east-1',
-          'US East (Ohio)': 'us-east-2',
-          'US West (N. California)': 'us-west-1',
-          'US West (Oregon)': 'us-west-2',
-          'Asia Pacific (Mumbai)': 'ap-south-1',
-          'Asia Pacific (Seoul)': 'ap-northeast-2',
-          'Asia Pacific (Singapore)': 'ap-southeast-1',
-          'Asia Pacific (Sydney)': 'ap-southeast-2',
-          'Asia Pacific (Tokyo)': 'ap-northeast-1',
-          'EU (Frankfurt)': 'eu-central-1',
-          'EU (Ireland)': 'eu-west-1',
-          'South America (Sao Paulo)': 'sa-east-1'
-        }
+PRICING_URL = 'https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/current/index.json'
+REGIONS = {
+    'US East (N. Virginia)': 'us-east-1',
+    'US East (Ohio)': 'us-east-2',
+    'US West (N. California)': 'us-west-1',
+    'US West (Oregon)': 'us-west-2',
+    'Asia Pacific (Mumbai)': 'ap-south-1',
+    'Asia Pacific (Seoul)': 'ap-northeast-2',
+    'Asia Pacific (Singapore)': 'ap-southeast-1',
+    'Asia Pacific (Sydney)': 'ap-southeast-2',
+    'Asia Pacific (Tokyo)': 'ap-northeast-1',
+    'EU (Frankfurt)': 'eu-central-1',
+    'EU (Ireland)': 'eu-west-1',
+    'South America (Sao Paulo)': 'sa-east-1'
+    }
 
 def get_ec2_prices(pricing_url):
     """Download and parse AWS EC2 compute pricing plans"""
@@ -31,7 +31,7 @@ def get_ec2_prices(pricing_url):
     skus = pricing['products'].keys()
     for sku in skus:
         if (pricing['products'][sku]['productFamily'] == "Compute Instance" and
-           pricing['terms']['OnDemand'].get(sku)):
+            pricing['terms']['OnDemand'].get(sku)):
             inst_location = pricing['products'][sku]['attributes']['location']
             inst_type = pricing['products'][sku]['attributes']['instanceType']
             inst_price = pricing['terms']['OnDemand'][sku].itervalues().next()['priceDimensions'].itervalues().next()['pricePerUnit']['USD']
@@ -47,7 +47,9 @@ def format_tags(tags, subset_tags):
     if tags:
         for subset_key in subset_tags:
             if any(subset_key in tag["Key"] for tag in tags):
-                tag_value = (tag for tag in tags if tag["Key"] == subset_key).next()["Value"]
+                tag_value = (
+                    tag for tag in tags if tag["Key"] == subset_key
+                    ).next()["Value"]
                 tagstring += "\t%s:%s" % (subset_key, tag_value)
     return tagstring
 
@@ -79,7 +81,8 @@ def main():
             vpc_age = (now - inst_start).days + 1
             vpc_name = tags2dict(vpc.tags).get("Name")
             vpc_desc = "%-12s %s %3d %4d $%3.2f" % (aws_region, vpc.vpc_id,
-                                                    inst_cnt, vpc_age, vpc_price)
+                                                    inst_cnt, vpc_age,
+                                                    vpc_price)
             print vpc_desc + format_tags(vpc.tags, intel_tags)
 
 main()

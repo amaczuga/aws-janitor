@@ -12,7 +12,9 @@ def valid_tags(tags, pattern_tags):
     if tags:
         for pattern_key in pattern_tags:
             if any(pattern_key in tag["Key"] for tag in tags):
-                tag_value = (tag for tag in tags if tag["Key"] == pattern_key).next()["Value"]
+                tag_value = (
+                    tag for tag in tags if tag["Key"] == pattern_key
+                    ).next()["Value"]
                 if not re.match(pattern_tags[pattern_key], tag_value):
                     valid = valid and False
             else:
@@ -30,16 +32,20 @@ def main():
             instance_count = sum(1 for e in vpc.instances.all())
             vpc_items = []
             if valid_tags(vpc.tags, intel_tags) and instance_count > 0:
-#                vpc_desc = "%s::%s::%d " % (aws_region, vpc.vpc_id, instance_count)
-#                print vpc_desc + "instances tagged."
-                selected_tags = [tag for tag in vpc.tags if tag["Key"] in intel_tags.keys()]
+                selected_tags = [
+                    tag for tag in vpc.tags if tag["Key"] in intel_tags.keys()]
                 vpc_inst = [inst.id for inst in vpc.instances.all()]
-                vol_fltr = [{'Name': 'attachment.instance-id', 'Values': vpc_inst}]
-                vpc_vols = [vol.id for vol in aws.resource('ec2').volumes.filter(Filters=vol_fltr)]
+                vol_fltr = [{'Name': 'attachment.instance-id',
+                             'Values': vpc_inst}]
+                vpc_vols = [
+                    vol.id for vol in aws.resource('ec2').volumes.filter(
+                        Filters=vol_fltr)]
                 vpc_items.extend(vpc_inst)
                 vpc_items.extend(vpc_vols)
-                aws.client('ec2').create_tags(Resources=vpc_items, Tags=selected_tags)
-                vpc_desc = "%s::%s %d/%d" % (aws_region, vpc.vpc_id, len(vpc_inst), len(vpc_vols))
+                aws.client('ec2').create_tags(Resources=vpc_items,
+                                              Tags=selected_tags)
+                vpc_desc = "%s::%s %d/%d" % (aws_region, vpc.vpc_id,
+                                             len(vpc_inst), len(vpc_vols))
                 print vpc_desc + " inst/vols tagged."
 
 main()
