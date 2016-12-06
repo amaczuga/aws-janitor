@@ -1,10 +1,9 @@
 #!/bin/env python
-# pylint: enable=wildcard-import, unused-wildcard-import
 """The program to traverse AWS account tagging VPC resources."""
 
-import boto3
 import json
 import re
+import boto3
 
 def valid_tags(tags, pattern_tags):
     """Regex-based tags validator, Boolean."""

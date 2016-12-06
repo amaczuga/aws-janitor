@@ -1,12 +1,12 @@
 #!/bin/env python
 """The program to traverse AWS account looking for VPCs."""
 
-import boto3
 import json
+from datetime import datetime
 from jmespath import search
 import requests
 import pytz
-from datetime import datetime
+import boto3
 
 PRICING_URL = \
     'https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/current/index.json'
