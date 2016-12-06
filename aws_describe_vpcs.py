@@ -1,14 +1,16 @@
 #!/bin/env python
-# pylint: enable=wildcard-import, unused-wildcard-import
 """The program to traverse AWS account looking for VPCs."""
 
 import boto3
 import json
+from jmespath import search
 import requests
 import pytz
 from datetime import datetime
 
-PRICING_URL = 'https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/current/index.json'
+PRICING_URL = \
+    'https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/current/index.json'
+
 REGIONS = {
     'US East (N. Virginia)': 'us-east-1',
     'US East (Ohio)': 'us-east-2',
@@ -24,17 +26,23 @@ REGIONS = {
     'South America (Sao Paulo)': 'sa-east-1'
     }
 
+SKU_FILTER = '[? \
+    productFamily == `Compute Instance` && \
+    attributes.operatingSystem == `Linux` && \
+    attributes.tenancy == `Shared` \
+    ].sku'
+
+PRICE_FILTER = '*.priceDimensions.*[].pricePerUnit.USD | [0]'
+
 def get_ec2_prices(pricing_url):
     """Download and parse AWS EC2 compute pricing plans"""
     prices = {}
     pricing = json.loads(requests.get(pricing_url).content)
-    skus = pricing['products'].keys()
-    for sku in skus:
-        if (pricing['products'][sku]['productFamily'] == "Compute Instance" and
-            pricing['terms']['OnDemand'].get(sku)):
+    for sku in search(SKU_FILTER, pricing['products'].values()):
+        if pricing['terms']['OnDemand'].get(sku):
             inst_location = pricing['products'][sku]['attributes']['location']
             inst_type = pricing['products'][sku]['attributes']['instanceType']
-            inst_price = pricing['terms']['OnDemand'][sku].itervalues().next()['priceDimensions'].itervalues().next()['pricePerUnit']['USD']
+            inst_price = search(PRICE_FILTER, pricing['terms']['OnDemand'][sku])
             if inst_location in REGIONS:
                 if not REGIONS[inst_location] in prices:
                     prices[REGIONS[inst_location]] = {}
@@ -80,9 +88,12 @@ def main():
             inst_start = min([inst.launch_time for inst in instances] or [now])
             vpc_age = (now - inst_start).days + 1
             vpc_name = tags2dict(vpc.tags).get("Name")
-            vpc_desc = "%-12s %s %3d %4d $%3.2f" % (aws_region, vpc.vpc_id,
-                                                    inst_cnt, vpc_age,
-                                                    vpc_price)
+            vpc_desc = "%-12s %s %3d %4d $%5.2f %-20s" % (aws_region,
+                                                          vpc.vpc_id,
+                                                          inst_cnt,
+                                                          vpc_age,
+                                                          vpc_price,
+                                                          vpc_name)
             print vpc_desc + format_tags(vpc.tags, intel_tags)
 
 main()
