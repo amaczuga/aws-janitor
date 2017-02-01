@@ -2,6 +2,8 @@
 """The program to traverse AWS account tagging VPC resources."""
 
 import sys
+import time
+import botocore
 import boto3
 
 def delete_vpc_auto_scaling_groups(aws_session, vpc):
@@ -88,7 +90,7 @@ def delete_vpc_security_groups(aws_session, vpc):
     group_refs = sorted([ \
                    (refs_count(vpc_secgrps, grp), grp) for grp in vpc_secgrps \
                         ])
-    for secgrp in [grp for refs, grp in group_refs]:
+    for secgrp in [grp[1] for grp in group_refs]:
         if not secgrp.group_name == 'default':
             secgrp.delete()
             print "%s::%s deleted." % (aws_session.region_name, secgrp.group_id)
@@ -114,6 +116,11 @@ def delete_vpc_gateways(aws_session, vpc):
         print "%s::%s deleted." % \
               (aws_session.region_name, igw.internet_gateway_id)
 
+def delete_vpc(aws_session, vpc):
+    """Delete the AWS VPC"""
+    vpc.delete()
+    print "%s::%s deleted." % (aws_session.region_name, vpc.vpc_id)
+
 def main():
     """The main program loop."""
     if len(sys.argv) > 1:
@@ -121,16 +128,20 @@ def main():
             aws = boto3.session.Session(region_name=aws_region)
             for vpc in aws.resource('ec2').vpcs.all():
                 if vpc.vpc_id == sys.argv[1]:
-                    delete_vpc_auto_scaling_groups(aws, vpc)
-                    terminate_vpc_instances(aws, vpc)
-                    delete_vpc_elbs(aws, vpc)
-                    delete_vpc_route_tables(aws, vpc)
-                    delete_vpc_gateways(aws, vpc)
-                    delete_vpc_network_interfaces(aws, vpc)
-                    delete_vpc_subnets(aws, vpc)
-                    delete_vpc_security_groups(aws, vpc)
-                    vpc.delete()
-                    print "%s::%s deleted." % (aws_region, vpc.vpc_id)
+                    while True:
+                        try:
+                            delete_vpc_auto_scaling_groups(aws, vpc)
+                            terminate_vpc_instances(aws, vpc)
+                            delete_vpc_elbs(aws, vpc)
+                            delete_vpc_route_tables(aws, vpc)
+                            delete_vpc_gateways(aws, vpc)
+                            delete_vpc_network_interfaces(aws, vpc)
+                            delete_vpc_subnets(aws, vpc)
+                            delete_vpc_security_groups(aws, vpc)
+                            delete_vpc(aws, vpc)
+                            break
+                        except Exception:
+                            time.sleep(10)
 
 main()
 
