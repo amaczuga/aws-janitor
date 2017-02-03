@@ -1,9 +1,10 @@
 #!/bin/env python
-"""The program to traverse AWS account looking for VPCs."""
+"""A program to traverse AWS account describing all VPCs."""
 
 import json
 from datetime import datetime
 from jmespath import search
+import argparse
 import requests
 import pytz
 import boto3
@@ -16,6 +17,7 @@ REGIONS = {
     'US East (Ohio)': 'us-east-2',
     'US West (N. California)': 'us-west-1',
     'US West (Oregon)': 'us-west-2',
+    'Canada (Central)': 'ca-central-1',
     'Asia Pacific (Mumbai)': 'ap-south-1',
     'Asia Pacific (Seoul)': 'ap-northeast-2',
     'Asia Pacific (Singapore)': 'ap-southeast-1',
@@ -23,6 +25,7 @@ REGIONS = {
     'Asia Pacific (Tokyo)': 'ap-northeast-1',
     'EU (Frankfurt)': 'eu-central-1',
     'EU (Ireland)': 'eu-west-1',
+    'EU (London)': 'eu-west-2',
     'South America (Sao Paulo)': 'sa-east-1'
     }
 
@@ -33,6 +36,11 @@ SKU_FILTER = '[? \
     ].sku'
 
 PRICE_FILTER = '*.priceDimensions.*[].pricePerUnit.USD | [0]'
+
+FORMATS = {
+    'txt': '%-12s %s %3d %4d $%6.2f %-20.20s %-8s %-4s %-20.20s %-5s',
+    'csv': '%s;%s;%d;%d;$%.2f;%s;%s;%s;%s;%s'
+    }
 
 def get_ec2_prices(pricing_url):
     """Download and parse AWS EC2 compute pricing plans"""
@@ -71,9 +79,10 @@ def tags2dict(aws_tags):
 
 def main():
     """The main program loop."""
-    with open('config.json', 'r') as config_file:
-        intel_tags = json.load(config_file).get("PATTERN_TAGS", {})
-
+    argparser = argparse.ArgumentParser(description='Print out VPC data')
+    argparser.add_argument('--format', choices=['txt', 'csv'], default='txt')
+    args = argparser.parse_args()
+    row_format = FORMATS.get(args.format)
     ec2_prices = get_ec2_prices(PRICING_URL)
 
     for aws_region in boto3.session.Session().get_available_regions('ec2'):
@@ -82,19 +91,20 @@ def main():
             vpc_price = 0
             instances = vpc.instances.all()
             for inst in instances:
-                vpc_price += ec2_prices[aws_region][inst.instance_type]*24
+                vpc_price += ec2_prices[aws_region][inst.instance_type] * 24
             inst_cnt = sum(1 for e in instances)
             now = datetime.now().replace(tzinfo=pytz.utc)
             inst_start = min([inst.launch_time for inst in instances] or [now])
             vpc_age = (now - inst_start).days + 1
-            vpc_name = tags2dict(vpc.tags).get("Name")
-            vpc_desc = "%-12s %s %3d %4d $%5.2f %-20s" % (aws_region,
-                                                          vpc.vpc_id,
-                                                          inst_cnt,
-                                                          vpc_age,
-                                                          vpc_price,
-                                                          vpc_name)
-            print vpc_desc + format_tags(vpc.tags, intel_tags)
+            vpc_desc = row_format % (aws_region, vpc.vpc_id, inst_cnt,
+                                     vpc_age, vpc_price,
+                                     tags2dict(vpc.tags).get("Name"),
+                                     tags2dict(vpc.tags).get("Owner"),
+                                     tags2dict(vpc.tags).get("Environment"),
+                                     tags2dict(vpc.tags).get("Project"),
+                                     tags2dict(vpc.tags).get("IAP")
+                                    )
+            print vpc_desc
 
 main()
 
