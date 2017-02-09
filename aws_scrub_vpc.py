@@ -1,9 +1,8 @@
 #!/bin/env python
 """The program to traverse AWS account tagging VPC resources."""
 
-import sys
 import time
-import botocore
+import argparse
 import boto3
 
 def delete_vpc_auto_scaling_groups(aws_session, vpc):
@@ -123,25 +122,31 @@ def delete_vpc(aws_session, vpc):
 
 def main():
     """The main program loop."""
-    if len(sys.argv) > 1:
-        for aws_region in boto3.session.Session().get_available_regions('ec2'):
-            aws = boto3.session.Session(region_name=aws_region)
-            for vpc in aws.resource('ec2').vpcs.all():
-                if vpc.vpc_id == sys.argv[1]:
-                    while True:
-                        try:
-                            delete_vpc_auto_scaling_groups(aws, vpc)
-                            terminate_vpc_instances(aws, vpc)
-                            delete_vpc_elbs(aws, vpc)
-                            delete_vpc_route_tables(aws, vpc)
-                            delete_vpc_gateways(aws, vpc)
-                            delete_vpc_network_interfaces(aws, vpc)
-                            delete_vpc_subnets(aws, vpc)
-                            delete_vpc_security_groups(aws, vpc)
-                            delete_vpc(aws, vpc)
-                            break
-                        except Exception:
-                            time.sleep(10)
+    argparser = argparse.ArgumentParser(description='Delete VPC and its resources')
+    argparser.add_argument('--debug', action='store_true')
+    argparser.add_argument('vpc_id')
+    args = argparser.parse_args()
+
+    for aws_region in boto3.session.Session().get_available_regions('ec2'):
+        aws = boto3.session.Session(region_name=aws_region)
+        for vpc in aws.resource('ec2').vpcs.all():
+            if vpc.vpc_id == args.vpc_id:
+                while True:
+                    try:
+                        delete_vpc_auto_scaling_groups(aws, vpc)
+                        terminate_vpc_instances(aws, vpc)
+                        delete_vpc_elbs(aws, vpc)
+                        delete_vpc_route_tables(aws, vpc)
+                        delete_vpc_gateways(aws, vpc)
+                        delete_vpc_network_interfaces(aws, vpc)
+                        delete_vpc_subnets(aws, vpc)
+                        delete_vpc_security_groups(aws, vpc)
+                        delete_vpc(aws, vpc)
+                        break
+                    except Exception as xcpt:
+                        if args.debug:
+                            print str(xcpt)
+                        time.sleep(10)
 
 main()
 
